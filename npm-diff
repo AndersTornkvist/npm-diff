@@ -6,22 +6,31 @@
 # MIT licensed
 # (c) 2014 Segment.io <friends@segment.io>
 # (c) 2018 Julian Gruber <mail@juliangruber.com>
+# (c) 2020 Anders Törnkvist <dev@anderstornkvist.se>
 #
 
 set -e
 
 # arguments
 
-if [[ $# != 3 ]]; then
+if [[ $# == 3 ]]; then
+  moduleA=$1
+  versionA=$2
+  moduleB=$1
+  versionB=$3
+elif [[ $# == 4 ]]; then
+  moduleA=$1
+  versionA=$2
+  moduleB=$3
+  versionB=$4
+else
   echo "Usage: npm-diff <module> <versionA> <versionB>"
+  echo "Different packages: npm-diff <moduleA> <versionA> <moduleB> <versionB>"
   exit 1
 fi
 
-module=$1
-a=$2
-b=$3
-aurl=$(npm show $module@$a dist.tarball 2>/dev/null)
-burl=$(npm show $module@$b dist.tarball 2>/dev/null)
+urlA=$(npm show "$moduleA"@"$versionA" dist.tarball 2>/dev/null)
+urlB=$(npm show "$moduleB"@"$versionB" dist.tarball 2>/dev/null)
 
 # work dir
 
@@ -31,28 +40,29 @@ cd $work
 
 # download
 
-download(){
-  version=$1
-  url=$2
-  mkdir $version
-  cd $version
+download() {
+  moduleName=$1
+  version=$2
+  url=$3
+  mkdir "$moduleName-$version"
+  cd "$moduleName-$version"
 
   user=""
   if [ "$(npm config get always-auth)" == "true" ]; then
     user="--user $(cat ~/.npmrc | grep _auth | cut -d' ' -f3 | base64 --decode)"
   fi
 
-  curl --fail --silent --insecure $user $url | tar -xz --strip 1
+  curl --fail --silent --insecure "$user" "$url" | tar -xz --strip 1
   if [[ ${PIPESTATUS[0]} != 0 ]]; then
-    echo "Unknown version: $module@$1"
+    echo "Unknown version: $moduleName@$version"
     exit 1
   fi
 }
 
-download $a $aurl &
-download $b $burl &
+download "$moduleA" "$versionA" "$urlA" &
+download "$moduleB" "$versionB" "$urlB" &
 
-for job in `jobs -p`; do wait $job || exit 1; done
+for job in $(jobs -p); do wait "$job" || exit 1; done
 
 # diff
 
@@ -61,10 +71,8 @@ diff \
   --unified \
   --exclude test \
   --exclude Makefile \
-  $a $b \
-  | egrep -v "\"readme\"|\"_id\"|\"_from\"|\"_resolved\""
+  "$moduleA"-"$versionA" "$moduleB"-"$versionB" | grep -E -v "\"readme\"|\"_id\"|\"_from\"|\"_resolved\""
 
 # cleanup
 
-rm -Rf $work
-
+echo "rm -Rf $work"
