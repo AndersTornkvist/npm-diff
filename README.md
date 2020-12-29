@@ -30,9 +30,16 @@ $ make install
 
 ## Usage
 
+For comparing two versions of the same module, use:
 ```bash
 $ npm-diff
 Usage: npm-diff <module> <versionA> <versionB>
+```
+
+For comparing two different modules, use:
+```bash
+$ npm-diff
+Usage: npm-diff <moduleA> <versionA> <moduleB> <versionB>
 ```
 
   __npm-diff(1)__ outputs regular __diff(1)__ content so it plays nice with other tooling.
